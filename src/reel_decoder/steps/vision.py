@@ -15,18 +15,14 @@ import ollama
 from rich.console import Console
 
 from reel_decoder.config import settings
+from reel_decoder.prompt_loader import load_prompt
 from reel_decoder.schema import FrameDescription, Scene
 from reel_decoder.steps import is_done, mark_done
 
 console = Console()
 
 
-PROMPT = (
-    "Describe what's in this frame in one sentence. Focus on: subject, action, "
-    "setting, lighting, and any product or object that appears prominent. "
-    "Do not describe text overlays — those are handled separately. "
-    "Keep it under 30 words."
-)
+PROMPT = load_prompt("vision")
 
 
 def _find_closest_frame(scene: Scene, frame_pairs: list[tuple[float, Path]]) -> Path | None:
