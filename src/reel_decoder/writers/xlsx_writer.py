@@ -128,12 +128,24 @@ def _init_workbook(path: Path) -> None:
 
 
 def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
-    """Append a decoded reel as a new row. Returns the row number written."""
+    """Append a decoded reel as a new row. Returns the row number written.
+
+    Deduplicates on source_path (column C) — if a row with the same path
+    already exists, logs a warning and returns the existing row number.
+    """
     if not xlsx_path.exists():
         _init_workbook(xlsx_path)
 
     wb = load_workbook(xlsx_path)
     ws = wb["Swipe Library"]
+
+    # Dedup: check if source_path already exists in column C
+    for row in ws.iter_rows(min_row=2, max_col=3, max_row=ws.max_row):
+        if row[2].value == decoded.source_path:
+            existing_row = row[0].row
+            console.log(f"[yellow]write: skipped duplicate — {decoded.source_path} already at row {existing_row}[/yellow]")
+            wb.close()
+            return existing_row
 
     # Find first empty row
     row_num = ws.max_row + 1
