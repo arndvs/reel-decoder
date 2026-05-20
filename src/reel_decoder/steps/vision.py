@@ -16,7 +16,7 @@ from rich.console import Console
 
 from reel_decoder.config import settings
 from reel_decoder.prompt_loader import load_prompt
-from reel_decoder.schema import FrameDescription, Scene
+from reel_decoder.schema import FrameDescription, PipelineError, Scene
 from reel_decoder.steps import is_done, mark_done
 
 console = Console()
@@ -69,7 +69,14 @@ def run(
             )
             desc = resp.message.content.strip()
         except Exception as e:  # noqa: BLE001
-            console.log(f"[yellow]vision: failed scene {scene.index}: {e}[/yellow]")
+            error = PipelineError(
+                code="vision_failure",
+                message=f"Failed scene {scene.index}: {e}",
+                step="vision",
+                details=str(frame),
+                retryable=True,
+            )
+            console.log(f"[yellow]vision: {error.message}[/yellow]")
             desc = ""
 
         descriptions.append(

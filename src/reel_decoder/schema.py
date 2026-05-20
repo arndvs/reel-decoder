@@ -205,3 +205,21 @@ class AggregatedBeat(BaseModel):
     overlay_highlight: str = ""
     transcript: str = ""
     visual_description: str = ""
+
+
+class PipelineError(BaseModel):
+    """Structured error from a pipeline step — serializable to JSON for manifests."""
+
+    code: Literal[
+        "llm_parse_error",
+        "llm_timeout",
+        "ocr_failure",
+        "vision_failure",
+        "ffmpeg_error",
+        "validation_error",
+        "unknown",
+    ]
+    message: str
+    step: str
+    details: str = ""
+    retryable: bool = True

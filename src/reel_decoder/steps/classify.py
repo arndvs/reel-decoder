@@ -16,7 +16,7 @@ from rich.console import Console
 
 from reel_decoder.config import settings
 from reel_decoder.prompt_loader import load_prompt
-from reel_decoder.schema import AggregatedBeat, DecodedReel
+from reel_decoder.schema import AggregatedBeat, DecodedReel, PipelineError
 from reel_decoder.steps import is_done, mark_done
 
 console = Console()
@@ -81,10 +81,16 @@ def run(
     except (json.JSONDecodeError, ValidationError) as e:
         # Save the raw output for debugging and re-raise with context
         (reel_dir / "classify_raw.txt").write_text(raw)
+        error = PipelineError(
+            code="llm_parse_error",
+            message=f"LLM returned invalid JSON / failed schema: {e}",
+            step="classify",
+            details=raw[:500],
+            retryable=True,
+        )
         raise RuntimeError(
-            f"classify: LLM returned invalid JSON / failed schema.\n"
-            f"Raw output saved to {reel_dir / 'classify_raw.txt'}\n"
-            f"Error: {e}"
+            f"classify: {error.message}\n"
+            f"Raw output saved to {reel_dir / 'classify_raw.txt'}"
         ) from e
 
     out_path.write_text(decoded.model_dump_json(indent=2))
