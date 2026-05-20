@@ -1,0 +1,31 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+*.egg-info/
+build/
+dist/
+
+.env
+.env.local
+
+# Data — these are user content, never commit
+inputs/reels/*.mp4
+inputs/reels/*.mov
+outputs/per-reel/*/
+outputs/swipe-library.xlsx
+
+# Keep the directories themselves
+!inputs/reels/.gitkeep
+!outputs/per-reel/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+*.swp

@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Decode: single reel (prompt for path)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "reel_decoder",
+      "args": ["decode", "${input:reelPath}"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Decode: single reel (force classify)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "reel_decoder",
+      "args": ["decode", "${input:reelPath}", "--force", "classify"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Decode: all reels in inputs/",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "reel_decoder",
+      "args": ["decode-all"],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Doctor",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "reel_decoder",
+      "args": ["doctor"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Tests (pytest)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests", "-v"],
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "reelPath",
+      "type": "promptString",
+      "description": "Path to .mp4 file (e.g. inputs/reels/alchemy-dose.mp4)",
+      "default": "inputs/reels/"
+    }
+  ]
+}

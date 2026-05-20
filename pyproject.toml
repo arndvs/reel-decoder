@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reel-decoder"
+version = "0.1.0"
+description = "Local pipeline that decodes Instagram reels into Swipe Library rows."
+requires-python = ">=3.11"
+dependencies = [
+    # Core
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "typer>=0.12",
+    "rich>=13.7",
+    "python-dotenv>=1.0",
+    # Media
+    "faster-whisper>=1.0.3",
+    "scenedetect[opencv]>=0.6.4",
+    "ffmpeg-python>=0.2.0",
+    "opencv-python-headless>=4.10",
+    "Pillow>=10.3",
+    "numpy>=1.26",
+    # OCR + Vision
+    "easyocr>=1.7.1",
+    "ollama>=0.3.0",
+    # Xlsx
+    "openpyxl>=3.1.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5",
+    "pytest>=8.2",
+    "pytest-cov>=5.0",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+reel-decoder = "reel_decoder.__main__:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

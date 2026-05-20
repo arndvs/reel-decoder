@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Setup: create venv + install",
+      "type": "shell",
+      "command": "python -m venv .venv && source .venv/bin/activate && pip install -e '.[dev]'",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "Setup: pull Ollama models",
+      "type": "shell",
+      "command": "bash scripts/setup_ollama.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "Doctor",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m reel_decoder doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Decode all reels",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m reel_decoder decode-all",
+      "problemMatcher": []
+    },
+    {
+      "label": "Tests",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python -m pytest -v",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint (ruff)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/ruff check src tests",
+      "problemMatcher": []
+    }
+  ]
+}
