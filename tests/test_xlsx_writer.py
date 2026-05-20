@@ -41,18 +41,22 @@ def test_append_row_dedup(tmp_path: Path):
     xlsx = tmp_path / "test.xlsx"
     decoded = _make_decoded()
 
-    row1 = append_row(decoded, xlsx)
-    row2 = append_row(decoded, xlsx)
+    row1, appended1 = append_row(decoded, xlsx)
+    row2, appended2 = append_row(decoded, xlsx)
 
     assert row1 == 2  # first data row
+    assert appended1 is True
     assert row2 == 2  # same row returned, not appended
+    assert appended2 is False
 
 
 def test_append_row_different_sources(tmp_path: Path):
     xlsx = tmp_path / "test.xlsx"
 
-    row1 = append_row(_make_decoded("inputs/reels/a.mp4"), xlsx)
-    row2 = append_row(_make_decoded("inputs/reels/b.mp4"), xlsx)
+    row1, appended1 = append_row(_make_decoded("inputs/reels/a.mp4"), xlsx)
+    row2, appended2 = append_row(_make_decoded("inputs/reels/b.mp4"), xlsx)
 
     assert row1 == 2
+    assert appended1 is True
     assert row2 == 3  # new row
+    assert appended2 is True

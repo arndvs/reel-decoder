@@ -161,8 +161,8 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
 
         # Step 9: write
         update_step(reel_dir, "write", "running")
-        xlsx_writer.append_row(decoded, settings.swipe_library_path)
-        update_step(reel_dir, "write", "done")
+        _row, appended = xlsx_writer.append_row(decoded, settings.swipe_library_path)
+        update_step(reel_dir, "write", "done" if appended else "skipped")
 
     except Exception as exc:
         # Mark the currently-running step as failed

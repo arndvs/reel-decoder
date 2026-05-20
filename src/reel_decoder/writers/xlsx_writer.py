@@ -127,8 +127,11 @@ def _init_workbook(path: Path) -> None:
     wb.save(path)
 
 
-def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
-    """Append a decoded reel as a new row. Returns the row number written.
+def append_row(decoded: DecodedReel, xlsx_path: Path) -> tuple[int, bool]:
+    """Append a decoded reel as a new row.
+
+    Returns (row_number, appended) — *appended* is False when the row was
+    a duplicate and no write occurred.
 
     Deduplicates on source_path (column C) — if a row with the same path
     already exists, logs a warning and returns the existing row number.
@@ -140,12 +143,18 @@ def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
     try:
         ws = wb["Swipe Library"]
 
-        # Dedup: check if source_path already exists in column C
+        # Single pass: dedup check + filled-row count
+        existing_row: int | None = None
+        filled_count = 0
         for row in ws.iter_rows(min_row=2, min_col=3, max_col=3, max_row=ws.max_row):
-            if row[0].value == decoded.source_path:
-                existing_row = row[0].row
-                console.log(f"[yellow]write: skipped duplicate — {decoded.source_path} already at row {existing_row}[/yellow]")
-                return existing_row
+            if row[0].value is not None:
+                filled_count += 1
+                if row[0].value == decoded.source_path:
+                    existing_row = row[0].row
+
+        if existing_row is not None:
+            console.log(f"[yellow]write: skipped duplicate — {decoded.source_path} already at row {existing_row}[/yellow]")
+            return existing_row, False
 
         # Find first empty row
         row_num = ws.max_row + 1
@@ -154,8 +163,7 @@ def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
             row_num -= 1
 
         values = decoded.to_xlsx_row()
-        # Set # to current count of filled rows
-        values[0] = sum(1 for r in ws.iter_rows(min_row=2, max_col=3) if r[2].value) + 1
+        values[0] = filled_count + 1
 
         for col_idx, val in enumerate(values, start=1):
             cell = ws.cell(row=row_num, column=col_idx, value=val)
@@ -166,6 +174,6 @@ def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
 
         wb.save(xlsx_path)
         console.log(f"write: appended row {row_num} to {xlsx_path}")
-        return row_num
+        return row_num, True
     finally:
         wb.close()
