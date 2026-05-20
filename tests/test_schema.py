@@ -175,5 +175,9 @@ def test_schema_version_excluded_from_xlsx_row():
     decoded = make_minimal_decoded()
     row = decoded.to_xlsx_row()
     assert len(row) == 35
-    # schema_version should not appear in the row values
-    assert 1 not in row[1:]  # skip first element (row number placeholder)
+    # schema_version should not add a column — verify known positions
+    assert row[1] == date.today()
+    assert row[2] == decoded.source_path
+    assert row[5] == "Rarity"
+    assert row[-1] == decoded.notes
+    assert row[-2] == decoded.stop_scroll_rating

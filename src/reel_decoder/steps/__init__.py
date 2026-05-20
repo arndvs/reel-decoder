@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
+
+from pydantic import ValidationError
 
 from reel_decoder.schema import PipelineError, RunManifest, StepStatus
 
@@ -39,18 +44,32 @@ def reset(reel_dir: Path, step: str) -> None:
 
 
 def load_manifest(reel_dir: Path) -> RunManifest | None:
-    """Load the run manifest from disk, or None if it doesn't exist."""
+    """Load the run manifest from disk, or None if it doesn't exist or is malformed."""
     path = reel_dir / MANIFEST_FILENAME
     if not path.exists():
         return None
-    return RunManifest.model_validate_json(path.read_text(encoding="utf-8"))
+    try:
+        return RunManifest.model_validate_json(path.read_text(encoding="utf-8"))
+    except (ValidationError, ValueError):
+        logging.warning("Corrupt manifest at %s — ignoring", path)
+        return None
 
 
 def save_manifest(reel_dir: Path, manifest: RunManifest) -> None:
-    """Write the run manifest to disk."""
+    """Write the run manifest to disk atomically."""
     reel_dir.mkdir(parents=True, exist_ok=True)
     path = reel_dir / MANIFEST_FILENAME
-    path.write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+    data = manifest.model_dump_json(indent=2)
+    tmp = tempfile.NamedTemporaryFile(  # noqa: SIM115
+        mode="w", dir=reel_dir, suffix=".tmp", delete=False, encoding="utf-8",
+    )
+    try:
+        tmp.write(data)
+        tmp.close()
+        Path(tmp.name).replace(path)
+    except BaseException:
+        Path(tmp.name).unlink(missing_ok=True)
+        raise
 
 
 def init_manifest(reel_dir: Path, reel_id: str, source_path: str, step_names: list[str]) -> RunManifest:
@@ -64,10 +83,13 @@ def init_manifest(reel_dir: Path, reel_id: str, source_path: str, step_names: li
     return manifest
 
 
+StepStatusValue = Literal["pending", "running", "done", "failed", "skipped"]
+
+
 def update_step(
     reel_dir: Path,
     step_name: str,
-    status: str,
+    status: StepStatusValue,
     error: PipelineError | None = None,
 ) -> None:
     """Update a step's status in the manifest."""
@@ -77,7 +99,7 @@ def update_step(
     now = datetime.now(UTC)
     for s in manifest.steps:
         if s.name == step_name:
-            s.status = status  # type: ignore[assignment]
+            s.status = status
             if status == "running":
                 s.started_at = now
             elif status in ("done", "failed", "skipped"):

@@ -10,7 +10,7 @@ import ollama
 from rich.console import Console
 
 from reel_decoder.config import settings
-from reel_decoder.schema import DecodedReel
+from reel_decoder.schema import DecodedReel, PipelineError
 from reel_decoder.steps import (
     aggregate,
     classify,
@@ -106,53 +106,73 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
     # Initialize run manifest
     manifest = init_manifest(reel_dir, reel_id, str(video_path), list(PIPELINE_STEPS))
 
-    # Step 1: audio
-    update_step(reel_dir, "ingest", "running")
-    audio_path = ingest.run(video_path, reel_dir)
-    duration_s = ingest.get_duration_s(video_path)
-    update_step(reel_dir, "ingest", "done")
+    try:
+        # Step 1: audio
+        update_step(reel_dir, "ingest", "running")
+        audio_path = ingest.run(video_path, reel_dir)
+        duration_s = ingest.get_duration_s(video_path)
+        update_step(reel_dir, "ingest", "done")
 
-    # Step 2: transcribe
-    update_step(reel_dir, "transcribe", "running")
-    transcript = transcribe.run(audio_path, reel_dir)
-    update_step(reel_dir, "transcribe", "done")
+        # Step 2: transcribe
+        update_step(reel_dir, "transcribe", "running")
+        transcript = transcribe.run(audio_path, reel_dir)
+        update_step(reel_dir, "transcribe", "done")
 
-    # Step 3: scenes
-    update_step(reel_dir, "scenes", "running")
-    scene_list = scenes.run(video_path, reel_dir)
-    update_step(reel_dir, "scenes", "done")
+        # Step 3: scenes
+        update_step(reel_dir, "scenes", "running")
+        scene_list = scenes.run(video_path, reel_dir)
+        update_step(reel_dir, "scenes", "done")
 
-    # Step 4: keyframes
-    update_step(reel_dir, "frames", "running")
-    frame_pairs = frames.run(video_path, scene_list, reel_dir)
-    update_step(reel_dir, "frames", "done")
+        # Step 4: keyframes
+        update_step(reel_dir, "frames", "running")
+        frame_pairs = frames.run(video_path, scene_list, reel_dir)
+        update_step(reel_dir, "frames", "done")
 
-    # Step 5: OCR
-    update_step(reel_dir, "ocr", "running")
-    ocr_dets = ocr.run(frame_pairs, reel_dir)
-    update_step(reel_dir, "ocr", "done")
+        # Step 5: OCR
+        update_step(reel_dir, "ocr", "running")
+        ocr_dets = ocr.run(frame_pairs, reel_dir)
+        update_step(reel_dir, "ocr", "done")
 
-    # Step 6: vision
-    update_step(reel_dir, "vision", "running")
-    visuals = vision.run(scene_list, frame_pairs, reel_dir)
-    update_step(reel_dir, "vision", "done")
+        # Step 6: vision
+        update_step(reel_dir, "vision", "running")
+        visuals = vision.run(scene_list, frame_pairs, reel_dir)
+        update_step(reel_dir, "vision", "done")
 
-    # Step 7: aggregate
-    update_step(reel_dir, "aggregate", "running")
-    hook, beats = aggregate.run(
-        transcript, scene_list, ocr_dets, visuals, reel_dir, duration_s
-    )
-    update_step(reel_dir, "aggregate", "done")
+        # Step 7: aggregate
+        update_step(reel_dir, "aggregate", "running")
+        hook, beats = aggregate.run(
+            transcript, scene_list, ocr_dets, visuals, reel_dir, duration_s
+        )
+        update_step(reel_dir, "aggregate", "done")
 
-    # Step 8: classify
-    update_step(reel_dir, "classify", "running")
-    decoded = classify.run(reel_id, video_path, hook, beats, duration_s, reel_dir)
-    update_step(reel_dir, "classify", "done")
+        # Step 8: classify
+        update_step(reel_dir, "classify", "running")
+        decoded = classify.run(reel_id, video_path, hook, beats, duration_s, reel_dir)
+        update_step(reel_dir, "classify", "done")
 
-    # Step 9: write
-    update_step(reel_dir, "write", "running")
-    xlsx_writer.append_row(decoded, settings.swipe_library_path)
-    update_step(reel_dir, "write", "done")
+        # Step 9: write
+        update_step(reel_dir, "write", "running")
+        xlsx_writer.append_row(decoded, settings.swipe_library_path)
+        update_step(reel_dir, "write", "done")
+
+    except Exception as exc:
+        # Mark the currently-running step as failed
+        failed_manifest = load_manifest(reel_dir)
+        if failed_manifest is not None:
+            for s in failed_manifest.steps:
+                if s.status == "running":
+                    error = PipelineError(
+                        code="unknown",
+                        message=str(exc),
+                        step=s.name,
+                    )
+                    update_step(reel_dir, s.name, "failed", error=error)
+                    break
+            failed_manifest = load_manifest(reel_dir)
+            if failed_manifest is not None:
+                failed_manifest.finished_at = datetime.now(UTC)
+                save_manifest(reel_dir, failed_manifest)
+        raise
 
     # Finalize manifest
     manifest = load_manifest(reel_dir)
