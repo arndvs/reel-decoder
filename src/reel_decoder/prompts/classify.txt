@@ -73,4 +73,13 @@ HOOK (0.0s - {hook_end_s}s):
 BODY BEATS:
 {beats_block}
 
+RULES — follow these strictly:
+1. Only use text that appears in the DATA above. Do not invent overlay text, transcript lines, or visual descriptions.
+2. Do not guess the creator name. Leave "creator" as an empty string unless the overlay or transcript explicitly names them.
+3. Do not fabricate beat types. If a beat doesn't clearly match one of the six types, pick the closest match — do not create new types.
+4. Leave "mechanism_line" as an empty string unless the data contains an explicit chemical, compound, biological process, or cited study.
+5. Rate "stop_scroll_rating" honestly based on how compelling the hook and first 2 seconds are. Do not default to 5.
+6. "cta" must be empty unless the reel has an explicit call to action (e.g., "link in bio", "follow for more").
+7. "notes" must be empty — it is reserved for human annotation.
+
 Return ONLY the JSON. No markdown fences. No explanation.
