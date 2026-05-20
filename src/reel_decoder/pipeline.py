@@ -48,7 +48,7 @@ PIPELINE_STEPS = (
 _SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
 
 
-def _preflight(video_path: Path) -> None:
+def _preflight(video_path: Path, *, need_ollama: bool = True) -> None:
     """Validate prerequisites before running the pipeline."""
     # 1. Supported format
     if video_path.suffix.lower() not in _SUPPORTED_EXTENSIONS:
@@ -69,7 +69,11 @@ def _preflight(video_path: Path) -> None:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"ffprobe cannot read {video_path}: {e.stderr.decode().strip()}") from e
 
-    # 3. Ollama host responds and required models exist
+    # 3. Ollama host responds and required models exist (skip when all
+    #    Ollama-dependent steps are already cached and not forced)
+    if not need_ollama:
+        return
+
     try:
         client = ollama.Client(host=settings.ollama_host)
         available = {m.model for m in client.list().models}
@@ -89,8 +93,6 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
     if not video_path.exists():
         raise FileNotFoundError(video_path)
 
-    _preflight(video_path)
-
     reel_id = video_path.stem
     reel_dir = settings.reel_dir(reel_id)
     reel_dir.mkdir(parents=True, exist_ok=True)
@@ -104,8 +106,17 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
 
     console.rule(f"[bold cyan]decoding {reel_id}[/bold cyan]")
 
-    # Initialize run manifest
+    # Initialize run manifest before preflight so failures are recorded
     init_manifest(reel_dir, reel_id, str(video_path), list(PIPELINE_STEPS))
+
+    # Ollama checks can be skipped when vision+classify are already cached
+    _ollama_steps = {"vision", "classify"}
+    _forced = set(force_steps or [])
+    need_ollama = bool(
+        _forced & _ollama_steps
+        or not all(is_done(reel_dir, s) for s in _ollama_steps)
+    )
+    _preflight(video_path, need_ollama=need_ollama)
 
     try:
         # Step 1: audio
