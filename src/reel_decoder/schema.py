@@ -104,8 +104,8 @@ class DecodedReel(BaseModel):
 
     def to_xlsx_row(self) -> list:
         """Flatten to a list matching the Swipe Library column order."""
-        beats_padded = list(self.beats) + [None] * (4 - len(self.beats))
-        beats_padded = beats_padded[:4]  # cap at 4
+        beats_padded = list(self.beats) + [None] * (6 - len(self.beats))
+        beats_padded = beats_padded[:6]  # cap at 6
 
         row = [
             None,  # # — left blank, sheet auto-numbers
