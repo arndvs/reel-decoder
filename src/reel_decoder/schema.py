@@ -216,6 +216,7 @@ class PipelineError(BaseModel):
         "ocr_failure",
         "vision_failure",
         "ffmpeg_error",
+        "preflight",
         "validation_error",
         "unknown",
     ]
