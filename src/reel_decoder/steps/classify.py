@@ -148,7 +148,7 @@ def run(
         format="json",
         options={"temperature": 0.1},
     )
-    raw = resp["message"]["content"]
+    raw = resp.message.content
 
     try:
         data = json.loads(raw)
