@@ -6,8 +6,9 @@ validates against these models. The shape mirrors the Swipe Library columns.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -81,6 +82,7 @@ class DecodedReel(BaseModel):
     """A fully-decoded reel — one row in the Swipe Library."""
 
     reel_id: str
+    schema_version: Literal[1] = 1
     source_path: str
     date_decoded: date = Field(default_factory=date.today)
     creator: str = ""
@@ -203,3 +205,43 @@ class AggregatedBeat(BaseModel):
     overlay_highlight: str = ""
     transcript: str = ""
     visual_description: str = ""
+
+
+class PipelineError(BaseModel):
+    """Structured error from a pipeline step — serializable to JSON for manifests."""
+
+    code: Literal[
+        "llm_parse_error",
+        "llm_timeout",
+        "ocr_failure",
+        "vision_failure",
+        "ffmpeg_error",
+        "preflight",
+        "validation_error",
+        "unknown",
+    ]
+    message: str
+    step: str
+    details: str = ""
+    retryable: bool = True
+
+
+class StepStatus(BaseModel):
+    """Status of a single pipeline step within a run."""
+
+    name: str
+    status: Literal["pending", "running", "done", "failed", "skipped"] = "pending"
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    error: PipelineError | None = None
+
+
+class RunManifest(BaseModel):
+    """Per-reel run manifest — tracks pipeline execution state."""
+
+    reel_id: str
+    source_path: str
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    finished_at: datetime | None = None
+    steps: list[StepStatus] = Field(default_factory=list)
+    errors: list[PipelineError] = Field(default_factory=list)
