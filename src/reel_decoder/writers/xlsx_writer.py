@@ -137,33 +137,35 @@ def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
         _init_workbook(xlsx_path)
 
     wb = load_workbook(xlsx_path)
-    ws = wb["Swipe Library"]
+    try:
+        ws = wb["Swipe Library"]
 
-    # Dedup: check if source_path already exists in column C
-    for row in ws.iter_rows(min_row=2, min_col=3, max_col=3, max_row=ws.max_row):
-        if row[0].value == decoded.source_path:
-            existing_row = row[0].row
-            console.log(f"[yellow]write: skipped duplicate — {decoded.source_path} already at row {existing_row}[/yellow]")
-            wb.close()
-            return existing_row
+        # Dedup: check if source_path already exists in column C
+        for row in ws.iter_rows(min_row=2, min_col=3, max_col=3, max_row=ws.max_row):
+            if row[0].value == decoded.source_path:
+                existing_row = row[0].row
+                console.log(f"[yellow]write: skipped duplicate — {decoded.source_path} already at row {existing_row}[/yellow]")
+                return existing_row
 
-    # Find first empty row
-    row_num = ws.max_row + 1
-    if ws.cell(row=row_num - 1, column=3).value is None and row_num > 2:
-        # Last row is empty; use it
-        row_num -= 1
+        # Find first empty row
+        row_num = ws.max_row + 1
+        if ws.cell(row=row_num - 1, column=3).value is None and row_num > 2:
+            # Last row is empty; use it
+            row_num -= 1
 
-    values = decoded.to_xlsx_row()
-    # Set # to current count of filled rows
-    values[0] = sum(1 for r in ws.iter_rows(min_row=2, max_col=3) if r[2].value) + 1
+        values = decoded.to_xlsx_row()
+        # Set # to current count of filled rows
+        values[0] = sum(1 for r in ws.iter_rows(min_row=2, max_col=3) if r[2].value) + 1
 
-    for col_idx, val in enumerate(values, start=1):
-        cell = ws.cell(row=row_num, column=col_idx, value=val)
-        cell.font = BODY_FONT
-        cell.alignment = LEFT
-        cell.border = BORDER
-    ws.row_dimensions[row_num].height = 55
+        for col_idx, val in enumerate(values, start=1):
+            cell = ws.cell(row=row_num, column=col_idx, value=val)
+            cell.font = BODY_FONT
+            cell.alignment = LEFT
+            cell.border = BORDER
+        ws.row_dimensions[row_num].height = 55
 
-    wb.save(xlsx_path)
-    console.log(f"write: appended row {row_num} to {xlsx_path}")
-    return row_num
+        wb.save(xlsx_path)
+        console.log(f"write: appended row {row_num} to {xlsx_path}")
+        return row_num
+    finally:
+        wb.close()
