@@ -109,79 +109,55 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
 
     try:
         # Step 1: audio
-        if is_done(reel_dir, "ingest"):
-            update_step(reel_dir, "ingest", "skipped")
-        else:
-            update_step(reel_dir, "ingest", "running")
+        _was_done = is_done(reel_dir, "ingest")
+        update_step(reel_dir, "ingest", "running")
         audio_path = ingest.run(video_path, reel_dir)
         duration_s = ingest.get_duration_s(video_path)
-        if not is_done(reel_dir, "ingest"):
-            update_step(reel_dir, "ingest", "done")
+        update_step(reel_dir, "ingest", "skipped" if _was_done else "done")
 
         # Step 2: transcribe
-        if is_done(reel_dir, "transcribe"):
-            update_step(reel_dir, "transcribe", "skipped")
-        else:
-            update_step(reel_dir, "transcribe", "running")
+        _was_done = is_done(reel_dir, "transcribe")
+        update_step(reel_dir, "transcribe", "running")
         transcript = transcribe.run(audio_path, reel_dir)
-        if not is_done(reel_dir, "transcribe"):
-            update_step(reel_dir, "transcribe", "done")
+        update_step(reel_dir, "transcribe", "skipped" if _was_done else "done")
 
         # Step 3: scenes
-        if is_done(reel_dir, "scenes"):
-            update_step(reel_dir, "scenes", "skipped")
-        else:
-            update_step(reel_dir, "scenes", "running")
+        _was_done = is_done(reel_dir, "scenes")
+        update_step(reel_dir, "scenes", "running")
         scene_list = scenes.run(video_path, reel_dir)
-        if not is_done(reel_dir, "scenes"):
-            update_step(reel_dir, "scenes", "done")
+        update_step(reel_dir, "scenes", "skipped" if _was_done else "done")
 
         # Step 4: keyframes
-        if is_done(reel_dir, "frames"):
-            update_step(reel_dir, "frames", "skipped")
-        else:
-            update_step(reel_dir, "frames", "running")
+        _was_done = is_done(reel_dir, "frames")
+        update_step(reel_dir, "frames", "running")
         frame_pairs = frames.run(video_path, scene_list, reel_dir)
-        if not is_done(reel_dir, "frames"):
-            update_step(reel_dir, "frames", "done")
+        update_step(reel_dir, "frames", "skipped" if _was_done else "done")
 
         # Step 5: OCR
-        if is_done(reel_dir, "ocr"):
-            update_step(reel_dir, "ocr", "skipped")
-        else:
-            update_step(reel_dir, "ocr", "running")
+        _was_done = is_done(reel_dir, "ocr")
+        update_step(reel_dir, "ocr", "running")
         ocr_dets = ocr.run(frame_pairs, reel_dir)
-        if not is_done(reel_dir, "ocr"):
-            update_step(reel_dir, "ocr", "done")
+        update_step(reel_dir, "ocr", "skipped" if _was_done else "done")
 
         # Step 6: vision
-        if is_done(reel_dir, "vision"):
-            update_step(reel_dir, "vision", "skipped")
-        else:
-            update_step(reel_dir, "vision", "running")
+        _was_done = is_done(reel_dir, "vision")
+        update_step(reel_dir, "vision", "running")
         visuals = vision.run(scene_list, frame_pairs, reel_dir)
-        if not is_done(reel_dir, "vision"):
-            update_step(reel_dir, "vision", "done")
+        update_step(reel_dir, "vision", "skipped" if _was_done else "done")
 
         # Step 7: aggregate
-        if is_done(reel_dir, "aggregate"):
-            update_step(reel_dir, "aggregate", "skipped")
-        else:
-            update_step(reel_dir, "aggregate", "running")
+        _was_done = is_done(reel_dir, "aggregate")
+        update_step(reel_dir, "aggregate", "running")
         hook, beats = aggregate.run(
             transcript, scene_list, ocr_dets, visuals, reel_dir, duration_s
         )
-        if not is_done(reel_dir, "aggregate"):
-            update_step(reel_dir, "aggregate", "done")
+        update_step(reel_dir, "aggregate", "skipped" if _was_done else "done")
 
         # Step 8: classify
-        if is_done(reel_dir, "classify"):
-            update_step(reel_dir, "classify", "skipped")
-        else:
-            update_step(reel_dir, "classify", "running")
+        _was_done = is_done(reel_dir, "classify")
+        update_step(reel_dir, "classify", "running")
         decoded = classify.run(reel_id, video_path, hook, beats, duration_s, reel_dir)
-        if not is_done(reel_dir, "classify"):
-            update_step(reel_dir, "classify", "done")
+        update_step(reel_dir, "classify", "skipped" if _was_done else "done")
 
         # Step 9: write
         update_step(reel_dir, "write", "running")

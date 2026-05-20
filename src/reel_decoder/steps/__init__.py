@@ -43,6 +43,17 @@ def reset(reel_dir: Path, step: str) -> None:
     sentinel = reel_dir / f".{step}.done"
     if sentinel.exists():
         sentinel.unlink()
+    # Also clear the step in the manifest so is_done() won't short-circuit
+    manifest = load_manifest(reel_dir)
+    if manifest is not None:
+        for s in manifest.steps:
+            if s.name == step:
+                s.status = "pending"
+                s.started_at = None
+                s.finished_at = None
+                s.error = None
+                break
+        save_manifest(reel_dir, manifest)
 
 
 def load_manifest(reel_dir: Path) -> RunManifest | None:
