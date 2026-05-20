@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import logging
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
 from pydantic import ValidationError
+from rich.console import Console
 
 from reel_decoder.schema import PipelineError, RunManifest, StepStatus
+
+console = Console()
 
 MANIFEST_FILENAME = "run_manifest.json"
 
@@ -51,7 +53,7 @@ def load_manifest(reel_dir: Path) -> RunManifest | None:
     try:
         return RunManifest.model_validate_json(path.read_text(encoding="utf-8"))
     except (ValidationError, ValueError):
-        logging.warning("Corrupt manifest at %s — ignoring", path)
+        console.log(f"[yellow]manifest: corrupt file at {path} — ignoring[/yellow]")
         return None
 
 

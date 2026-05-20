@@ -17,6 +17,7 @@ from reel_decoder.steps import (
     frames,
     ingest,
     init_manifest,
+    is_done,
     load_manifest,
     ocr,
     reset,
@@ -108,47 +109,79 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
 
     try:
         # Step 1: audio
-        update_step(reel_dir, "ingest", "running")
+        if is_done(reel_dir, "ingest"):
+            update_step(reel_dir, "ingest", "skipped")
+        else:
+            update_step(reel_dir, "ingest", "running")
         audio_path = ingest.run(video_path, reel_dir)
         duration_s = ingest.get_duration_s(video_path)
-        update_step(reel_dir, "ingest", "done")
+        if not is_done(reel_dir, "ingest"):
+            update_step(reel_dir, "ingest", "done")
 
         # Step 2: transcribe
-        update_step(reel_dir, "transcribe", "running")
+        if is_done(reel_dir, "transcribe"):
+            update_step(reel_dir, "transcribe", "skipped")
+        else:
+            update_step(reel_dir, "transcribe", "running")
         transcript = transcribe.run(audio_path, reel_dir)
-        update_step(reel_dir, "transcribe", "done")
+        if not is_done(reel_dir, "transcribe"):
+            update_step(reel_dir, "transcribe", "done")
 
         # Step 3: scenes
-        update_step(reel_dir, "scenes", "running")
+        if is_done(reel_dir, "scenes"):
+            update_step(reel_dir, "scenes", "skipped")
+        else:
+            update_step(reel_dir, "scenes", "running")
         scene_list = scenes.run(video_path, reel_dir)
-        update_step(reel_dir, "scenes", "done")
+        if not is_done(reel_dir, "scenes"):
+            update_step(reel_dir, "scenes", "done")
 
         # Step 4: keyframes
-        update_step(reel_dir, "frames", "running")
+        if is_done(reel_dir, "frames"):
+            update_step(reel_dir, "frames", "skipped")
+        else:
+            update_step(reel_dir, "frames", "running")
         frame_pairs = frames.run(video_path, scene_list, reel_dir)
-        update_step(reel_dir, "frames", "done")
+        if not is_done(reel_dir, "frames"):
+            update_step(reel_dir, "frames", "done")
 
         # Step 5: OCR
-        update_step(reel_dir, "ocr", "running")
+        if is_done(reel_dir, "ocr"):
+            update_step(reel_dir, "ocr", "skipped")
+        else:
+            update_step(reel_dir, "ocr", "running")
         ocr_dets = ocr.run(frame_pairs, reel_dir)
-        update_step(reel_dir, "ocr", "done")
+        if not is_done(reel_dir, "ocr"):
+            update_step(reel_dir, "ocr", "done")
 
         # Step 6: vision
-        update_step(reel_dir, "vision", "running")
+        if is_done(reel_dir, "vision"):
+            update_step(reel_dir, "vision", "skipped")
+        else:
+            update_step(reel_dir, "vision", "running")
         visuals = vision.run(scene_list, frame_pairs, reel_dir)
-        update_step(reel_dir, "vision", "done")
+        if not is_done(reel_dir, "vision"):
+            update_step(reel_dir, "vision", "done")
 
         # Step 7: aggregate
-        update_step(reel_dir, "aggregate", "running")
+        if is_done(reel_dir, "aggregate"):
+            update_step(reel_dir, "aggregate", "skipped")
+        else:
+            update_step(reel_dir, "aggregate", "running")
         hook, beats = aggregate.run(
             transcript, scene_list, ocr_dets, visuals, reel_dir, duration_s
         )
-        update_step(reel_dir, "aggregate", "done")
+        if not is_done(reel_dir, "aggregate"):
+            update_step(reel_dir, "aggregate", "done")
 
         # Step 8: classify
-        update_step(reel_dir, "classify", "running")
+        if is_done(reel_dir, "classify"):
+            update_step(reel_dir, "classify", "skipped")
+        else:
+            update_step(reel_dir, "classify", "running")
         decoded = classify.run(reel_id, video_path, hook, beats, duration_s, reel_dir)
-        update_step(reel_dir, "classify", "done")
+        if not is_done(reel_dir, "classify"):
+            update_step(reel_dir, "classify", "done")
 
         # Step 9: write
         update_step(reel_dir, "write", "running")
