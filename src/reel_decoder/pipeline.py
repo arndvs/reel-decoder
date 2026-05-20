@@ -81,7 +81,7 @@ def _preflight(video_path: Path, *, need_ollama: bool = True) -> None:
         raise RuntimeError(f"Cannot connect to Ollama at {settings.ollama_host}: {e}") from e
 
     for model_name in (settings.vision_model, settings.classifier_model):
-        if model_name not in available:
+        if not any(model_name in name for name in available):
             raise RuntimeError(
                 f"Ollama model {model_name!r} not found. "
                 f"Run: ollama pull {model_name}"
@@ -176,9 +176,10 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
         update_step(reel_dir, "write", "done" if appended else "skipped")
 
     except Exception as exc:
-        # Mark the currently-running step as failed
+        # Mark the currently-running step (or preflight) as failed
         failed_manifest = load_manifest(reel_dir)
         if failed_manifest is not None:
+            found_running = False
             for s in failed_manifest.steps:
                 if s.status == "running":
                     error = PipelineError(
@@ -187,11 +188,20 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
                         step=s.name,
                     )
                     update_step(reel_dir, s.name, "failed", error=error)
+                    found_running = True
                     break
-            failed_manifest = load_manifest(reel_dir)
-            if failed_manifest is not None:
-                failed_manifest.finished_at = datetime.now(UTC)
-                save_manifest(reel_dir, failed_manifest)
+            if not found_running:
+                # Preflight failure — no step was running yet
+                failed_manifest.errors.append(
+                    PipelineError(
+                        code="preflight",
+                        message=str(exc),
+                        step="preflight",
+                    )
+                )
+            failed_manifest = load_manifest(reel_dir) if found_running else failed_manifest
+            failed_manifest.finished_at = datetime.now(UTC)
+            save_manifest(reel_dir, failed_manifest)
         raise
 
     # Finalize manifest
