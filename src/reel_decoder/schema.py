@@ -7,12 +7,12 @@ validates against these models. The shape mirrors the Swipe Library columns.
 from __future__ import annotations
 
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class HookPattern(str, Enum):
+class HookPattern(StrEnum):
     """The 8 hook archetypes from the swipe library."""
 
     rarity = "Rarity"
@@ -25,7 +25,7 @@ class HookPattern(str, Enum):
     demonstration = "Demonstration"
 
 
-class BeatType(str, Enum):
+class BeatType(StrEnum):
     benefit = "Benefit"
     mechanism = "Mechanism"
     aspiration = "Aspiration"
@@ -34,7 +34,7 @@ class BeatType(str, Enum):
     reveal = "Reveal"
 
 
-class MusicVibe(str, Enum):
+class MusicVibe(StrEnum):
     ambient = "Ambient"
     driving = "Driving/EDM"
     cinematic = "Cinematic"
@@ -43,7 +43,7 @@ class MusicVibe(str, Enum):
     none_silent = "None/Silent"
 
 
-class CaptionStyle(str, Enum):
+class CaptionStyle(StrEnum):
     karaoke = "Karaoke"
     static_cards = "Static cards"
     voiceover_only = "Voiceover only"

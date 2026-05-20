@@ -8,8 +8,17 @@ from rich.console import Console
 
 from reel_decoder.config import settings
 from reel_decoder.schema import DecodedReel
-from reel_decoder.steps import ingest, transcribe, scenes, frames, ocr, vision, aggregate, classify
-from reel_decoder.steps import reset
+from reel_decoder.steps import (
+    aggregate,
+    classify,
+    frames,
+    ingest,
+    ocr,
+    reset,
+    scenes,
+    transcribe,
+    vision,
+)
 from reel_decoder.writers import xlsx_writer
 
 console = Console()
