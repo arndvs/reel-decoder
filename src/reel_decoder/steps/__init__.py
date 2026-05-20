@@ -23,7 +23,7 @@ def is_done(reel_dir: Path, step: str) -> bool:
     manifest = load_manifest(reel_dir)
     if manifest is not None:
         for s in manifest.steps:
-            if s.name == step and s.status == "done":
+            if s.name == step and s.status in ("done", "skipped"):
                 return True
     return (reel_dir / f".{step}.done").exists()
 
@@ -68,6 +68,7 @@ def save_manifest(reel_dir: Path, manifest: RunManifest) -> None:
         tmp.close()
         Path(tmp.name).replace(path)
     except BaseException:
+        tmp.close()
         Path(tmp.name).unlink(missing_ok=True)
         raise
 

@@ -104,7 +104,7 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
     console.rule(f"[bold cyan]decoding {reel_id}[/bold cyan]")
 
     # Initialize run manifest
-    manifest = init_manifest(reel_dir, reel_id, str(video_path), list(PIPELINE_STEPS))
+    init_manifest(reel_dir, reel_id, str(video_path), list(PIPELINE_STEPS))
 
     try:
         # Step 1: audio

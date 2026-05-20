@@ -22,9 +22,6 @@ from reel_decoder.steps import is_done, mark_done
 console = Console()
 
 
-PROMPT = load_prompt("vision")
-
-
 def _find_closest_frame(scene: Scene, frame_pairs: list[tuple[float, Path]]) -> Path | None:
     if not frame_pairs:
         return None
@@ -61,7 +58,7 @@ def run(
                 messages=[
                     {
                         "role": "user",
-                        "content": PROMPT,
+                        "content": load_prompt("vision"),
                         "images": [image_b64],
                     }
                 ],

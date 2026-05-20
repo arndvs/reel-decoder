@@ -42,6 +42,9 @@ reel-decoder = "reel_decoder.__main__:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+reel_decoder = ["prompts/*.txt"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

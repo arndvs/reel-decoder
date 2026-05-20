@@ -22,9 +22,6 @@ from reel_decoder.steps import is_done, mark_done
 console = Console()
 
 
-PROMPT_TEMPLATE = load_prompt("classify")
-
-
 def _format_beats_block(beats: list[AggregatedBeat]) -> str:
     lines = []
     for i, b in enumerate(beats, start=1):
@@ -52,7 +49,7 @@ def run(
         console.log("[dim]classify: skipped[/dim]")
         return DecodedReel.model_validate_json(out_path.read_text())
 
-    prompt = PROMPT_TEMPLATE.format(
+    prompt = load_prompt("classify").format(
         reel_id=reel_id,
         source_path=str(source_path),
         duration_s=round(duration_s, 1),
