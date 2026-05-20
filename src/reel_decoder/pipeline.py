@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+import ollama
 from rich.console import Console
 
 from reel_decoder.config import settings
@@ -42,10 +44,51 @@ PIPELINE_STEPS = (
 )
 
 
+_SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
+
+
+def _preflight(video_path: Path) -> None:
+    """Validate prerequisites before running the pipeline."""
+    # 1. Supported format
+    if video_path.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+        raise RuntimeError(
+            f"Unsupported video format: {video_path.suffix}. "
+            f"Supported: {', '.join(sorted(_SUPPORTED_EXTENSIONS))}"
+        )
+
+    # 2. ffprobe can read the file
+    try:
+        subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", str(video_path)],
+            capture_output=True,
+            check=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("ffprobe not found — install ffmpeg and ensure it's on PATH") from None
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"ffprobe cannot read {video_path}: {e.stderr.decode().strip()}") from e
+
+    # 3. Ollama host responds and required models exist
+    try:
+        client = ollama.Client(host=settings.ollama_host)
+        available = {m.model for m in client.list().models}
+    except Exception as e:
+        raise RuntimeError(f"Cannot connect to Ollama at {settings.ollama_host}: {e}") from e
+
+    for model_name in (settings.vision_model, settings.classifier_model):
+        if model_name not in available:
+            raise RuntimeError(
+                f"Ollama model {model_name!r} not found. "
+                f"Run: ollama pull {model_name}"
+            )
+
+
 def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> DecodedReel:
     """Run the full decoding pipeline for one reel. Returns the DecodedReel."""
     if not video_path.exists():
         raise FileNotFoundError(video_path)
+
+    _preflight(video_path)
 
     reel_id = video_path.stem
     reel_dir = settings.reel_dir(reel_id)
