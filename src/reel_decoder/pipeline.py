@@ -116,9 +116,9 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
         _forced & _ollama_steps
         or not all(is_done(reel_dir, s) for s in _ollama_steps)
     )
-    _preflight(video_path, need_ollama=need_ollama)
 
     try:
+        _preflight(video_path, need_ollama=need_ollama)
         # Step 1: audio
         _was_done = is_done(reel_dir, "ingest")
         update_step(reel_dir, "ingest", "running")
