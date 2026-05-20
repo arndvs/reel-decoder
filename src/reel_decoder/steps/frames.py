@@ -26,8 +26,6 @@ def run(video_path: Path, scenes: list[Scene], reel_dir: Path) -> list[tuple[flo
 
     if is_done(reel_dir, "frames") and manifest_path.exists():
         console.log("[dim]frames: skipped[/dim]")
-        import json
-
         data = json.loads(manifest_path.read_text())
         return [(t, Path(p)) for t, p in data]
 
@@ -84,7 +82,7 @@ def run(video_path: Path, scenes: list[Scene], reel_dir: Path) -> list[tuple[flo
         console.log(
             f"[yellow]warn: requested {len(deduped)} frames, got {len(files)}[/yellow]"
         )
-    pairs = list(zip(deduped, files))
+    pairs = list(zip(deduped, files, strict=False))
 
     manifest_path.write_text(json.dumps([[t, str(p)] for t, p in pairs], indent=2))
     mark_done(reel_dir, "frames")

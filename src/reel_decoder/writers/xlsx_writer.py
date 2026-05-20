@@ -40,6 +40,12 @@ HEADERS = [
     ("Beat 4 — Text (opt)", 24),
     ("Beat 4 — Type", 14),
     ("Beat 4 — Visual", 24),
+    ("Beat 5 — Text (opt)", 24),
+    ("Beat 5 — Type", 14),
+    ("Beat 5 — Visual", 24),
+    ("Beat 6 — Text (opt)", 24),
+    ("Beat 6 — Type", 14),
+    ("Beat 6 — Visual", 24),
     ("Mechanism Line", 30),
     ("Payoff Visual", 30),
     ("CTA", 20),
@@ -92,7 +98,7 @@ def _init_workbook(path: Path) -> None:
         allow_blank=True,
     )
     ws.add_data_validation(beat_dv)
-    for col_letter in ["J", "M", "P", "S"]:
+    for col_letter in ["J", "M", "P", "S", "V", "Y"]:
         beat_dv.add(f"{col_letter}2:{col_letter}1000")
 
     music_dv = DataValidation(
@@ -101,7 +107,7 @@ def _init_workbook(path: Path) -> None:
         allow_blank=True,
     )
     ws.add_data_validation(music_dv)
-    music_dv.add("Y2:Y1000")
+    music_dv.add("AE2:AE1000")
 
     caption_dv = DataValidation(
         type="list",
@@ -109,13 +115,13 @@ def _init_workbook(path: Path) -> None:
         allow_blank=True,
     )
     ws.add_data_validation(caption_dv)
-    caption_dv.add("Z2:Z1000")
+    caption_dv.add("AF2:AF1000")
 
     scroll_dv = DataValidation(
         type="list", formula1='"1,2,3,4,5"', allow_blank=True
     )
     ws.add_data_validation(scroll_dv)
-    scroll_dv.add("AB2:AB1000")
+    scroll_dv.add("AH2:AH1000")
 
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
@@ -148,5 +154,4 @@ def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
 
     wb.save(xlsx_path)
     console.log(f"write: appended row {row_num} to {xlsx_path}")
-    return row_num
     return row_num

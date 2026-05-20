@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from rich.console import Console
@@ -34,10 +33,7 @@ def _get_model():
         try:
             import torch
 
-            if torch.cuda.is_available():
-                device = "cuda"
-            else:
-                device = "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         except ImportError:
             device = "cpu"
 

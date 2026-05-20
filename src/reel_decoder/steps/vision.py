@@ -7,6 +7,7 @@ wasteful and slow.
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 
@@ -57,18 +58,20 @@ def run(
         if frame is None:
             continue
         try:
+            image_bytes = frame.read_bytes()
+            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
             resp = client.chat(
                 model=settings.vision_model,
                 messages=[
                     {
                         "role": "user",
                         "content": PROMPT,
-                        "images": [str(frame)],
+                        "images": [image_b64],
                     }
                 ],
                 options={"temperature": 0.2},
             )
-            desc = resp["message"]["content"].strip()
+            desc = resp.message.content.strip()
         except Exception as e:  # noqa: BLE001
             console.log(f"[yellow]vision: failed scene {scene.index}: {e}[/yellow]")
             desc = ""

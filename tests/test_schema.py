@@ -81,8 +81,8 @@ def test_end_before_start_rejected():
 def test_to_xlsx_row_shape():
     decoded = make_minimal_decoded()
     row = decoded.to_xlsx_row()
-    # Expected length: 29 columns to match the Swipe Library schema
-    assert len(row) == 29
+    # Expected length: 35 columns to match the Swipe Library schema (6 beat groups)
+    assert len(row) == 35
     # Date is in column 2 (index 1)
     assert row[1] == date.today()
     # Hook pattern in column 6 (index 5)
@@ -97,13 +97,17 @@ def test_to_xlsx_row_shape():
 def test_to_xlsx_row_pads_empty_beats():
     decoded = make_minimal_decoded()  # only 2 beats
     row = decoded.to_xlsx_row()
-    # Beats 3 and 4 should be empty strings (12 slots starting at col 9)
+    # Beats 3-6 should be empty strings
     # Beat 3 text = column 15 (index 14)
     assert row[14] == ""
     assert row[15] == ""
     assert row[16] == ""
     # Beat 4
     assert row[17] == ""
+    # Beat 5
+    assert row[20] == ""
+    # Beat 6
+    assert row[23] == ""
 
 
 def test_stop_scroll_range():

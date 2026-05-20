@@ -89,7 +89,6 @@ def reset_reel(
 def doctor():
     """Diagnose the environment — check ffmpeg, Ollama, and model availability."""
     import shutil
-    import subprocess
 
     import ollama
 
