@@ -127,31 +127,56 @@ def _init_workbook(path: Path) -> None:
     wb.save(path)
 
 
-def append_row(decoded: DecodedReel, xlsx_path: Path) -> int:
-    """Append a decoded reel as a new row. Returns the row number written."""
+def append_row(decoded: DecodedReel, xlsx_path: Path) -> tuple[int, bool]:
+    """Append a decoded reel as a new row.
+
+    Returns (row_number, appended) — *appended* is False when the row was
+    a duplicate and no write occurred.
+
+    Deduplicates on source_path (column C) — if a row with the same path
+    already exists, logs a warning and returns the existing row number.
+    """
     if not xlsx_path.exists():
         _init_workbook(xlsx_path)
 
     wb = load_workbook(xlsx_path)
-    ws = wb["Swipe Library"]
+    try:
+        ws = wb["Swipe Library"]
 
-    # Find first empty row
-    row_num = ws.max_row + 1
-    if ws.cell(row=row_num - 1, column=3).value is None and row_num > 2:
-        # Last row is empty; use it
-        row_num -= 1
+        # Single pass: dedup check + filled-row count
+        existing_row: int | None = None
+        filled_count = 0
+        target = decoded.source_path.strip()
+        for row in ws.iter_rows(min_row=2, min_col=3, max_col=3, max_row=ws.max_row):
+            val = row[0].value
+            normalised = None if val is None else str(val).strip()
+            if normalised:
+                filled_count += 1
+                if normalised == target:
+                    existing_row = row[0].row
 
-    values = decoded.to_xlsx_row()
-    # Set # to current count of filled rows
-    values[0] = sum(1 for r in ws.iter_rows(min_row=2, max_col=3) if r[2].value) + 1
+        if existing_row is not None:
+            console.log(f"[yellow]write: skipped duplicate — {decoded.source_path} already at row {existing_row}[/yellow]")
+            return existing_row, False
 
-    for col_idx, val in enumerate(values, start=1):
-        cell = ws.cell(row=row_num, column=col_idx, value=val)
-        cell.font = BODY_FONT
-        cell.alignment = LEFT
-        cell.border = BORDER
-    ws.row_dimensions[row_num].height = 55
+        # Find first empty row
+        row_num = ws.max_row + 1
+        if ws.cell(row=row_num - 1, column=3).value is None and row_num > 2:
+            # Last row is empty; use it
+            row_num -= 1
 
-    wb.save(xlsx_path)
-    console.log(f"write: appended row {row_num} to {xlsx_path}")
-    return row_num
+        values = decoded.to_xlsx_row()
+        values[0] = filled_count + 1
+
+        for col_idx, val in enumerate(values, start=1):
+            cell = ws.cell(row=row_num, column=col_idx, value=val)
+            cell.font = BODY_FONT
+            cell.alignment = LEFT
+            cell.border = BORDER
+        ws.row_dimensions[row_num].height = 55
+
+        wb.save(xlsx_path)
+        console.log(f"write: appended row {row_num} to {xlsx_path}")
+        return row_num, True
+    finally:
+        wb.close()

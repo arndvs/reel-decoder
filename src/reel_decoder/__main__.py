@@ -47,7 +47,7 @@ def decode_all(
     videos = sorted(
         p
         for p in inputs.iterdir()
-        if p.is_file() and p.suffix.lower() in {".mp4", ".mov", ".webm", ".mkv"}
+        if p.is_file() and p.suffix.lower() in {".mp4", ".mov", ".webm", ".mkv", ".avi"}
     )
     if not videos:
         console.print(f"[yellow]No video files found in {inputs}[/yellow]")

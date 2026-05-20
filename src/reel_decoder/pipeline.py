@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
+import ollama
 from rich.console import Console
 
 from reel_decoder.config import settings
-from reel_decoder.schema import DecodedReel
+from reel_decoder.schema import DecodedReel, PipelineError
 from reel_decoder.steps import (
     aggregate,
     classify,
     frames,
     ingest,
+    init_manifest,
+    is_done,
+    load_manifest,
     ocr,
     reset,
+    save_manifest,
     scenes,
     transcribe,
+    update_step,
     vision,
 )
 from reel_decoder.writers import xlsx_writer
@@ -37,6 +45,49 @@ PIPELINE_STEPS = (
 )
 
 
+_SUPPORTED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
+
+
+def _preflight(video_path: Path, *, need_ollama: bool = True) -> None:
+    """Validate prerequisites before running the pipeline."""
+    # 1. Supported format
+    if video_path.suffix.lower() not in _SUPPORTED_EXTENSIONS:
+        raise RuntimeError(
+            f"Unsupported video format: {video_path.suffix}. "
+            f"Supported: {', '.join(sorted(_SUPPORTED_EXTENSIONS))}"
+        )
+
+    # 2. ffprobe can read the file
+    try:
+        subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", str(video_path)],
+            capture_output=True,
+            check=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("ffprobe not found — install ffmpeg and ensure it's on PATH") from None
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"ffprobe cannot read {video_path}: {e.stderr.decode().strip()}") from e
+
+    # 3. Ollama host responds and required models exist (skip when all
+    #    Ollama-dependent steps are already cached and not forced)
+    if not need_ollama:
+        return
+
+    try:
+        client = ollama.Client(host=settings.ollama_host)
+        available = {m.model for m in client.list().models}
+    except Exception as e:
+        raise RuntimeError(f"Cannot connect to Ollama at {settings.ollama_host}: {e}") from e
+
+    for model_name in (settings.vision_model, settings.classifier_model):
+        if not any(model_name in name for name in available):
+            raise RuntimeError(
+                f"Ollama model {model_name!r} not found. "
+                f"Run: ollama pull {model_name}"
+            )
+
+
 def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> DecodedReel:
     """Run the full decoding pipeline for one reel. Returns the DecodedReel."""
     if not video_path.exists():
@@ -55,35 +106,109 @@ def decode_reel(video_path: Path, force_steps: list[str] | None = None) -> Decod
 
     console.rule(f"[bold cyan]decoding {reel_id}[/bold cyan]")
 
-    # Step 1: audio
-    audio_path = ingest.run(video_path, reel_dir)
-    duration_s = ingest.get_duration_s(video_path)
+    # Initialize run manifest before preflight so failures are recorded
+    init_manifest(reel_dir, reel_id, str(video_path), list(PIPELINE_STEPS))
 
-    # Step 2: transcribe
-    transcript = transcribe.run(audio_path, reel_dir)
-
-    # Step 3: scenes
-    scene_list = scenes.run(video_path, reel_dir)
-
-    # Step 4: keyframes
-    frame_pairs = frames.run(video_path, scene_list, reel_dir)
-
-    # Step 5: OCR
-    ocr_dets = ocr.run(frame_pairs, reel_dir)
-
-    # Step 6: vision
-    visuals = vision.run(scene_list, frame_pairs, reel_dir)
-
-    # Step 7: aggregate
-    hook, beats = aggregate.run(
-        transcript, scene_list, ocr_dets, visuals, reel_dir, duration_s
+    # Ollama checks can be skipped when vision+classify are already cached
+    _ollama_steps = {"vision", "classify"}
+    _forced = set(force_steps or [])
+    need_ollama = bool(
+        _forced & _ollama_steps
+        or not all(is_done(reel_dir, s) for s in _ollama_steps)
     )
 
-    # Step 8: classify
-    decoded = classify.run(reel_id, video_path, hook, beats, duration_s, reel_dir)
+    try:
+        _preflight(video_path, need_ollama=need_ollama)
+        # Step 1: audio
+        _was_done = is_done(reel_dir, "ingest")
+        update_step(reel_dir, "ingest", "running")
+        audio_path = ingest.run(video_path, reel_dir)
+        duration_s = ingest.get_duration_s(video_path)
+        update_step(reel_dir, "ingest", "skipped" if _was_done else "done")
 
-    # Step 9: write
-    xlsx_writer.append_row(decoded, settings.swipe_library_path)
+        # Step 2: transcribe
+        _was_done = is_done(reel_dir, "transcribe")
+        update_step(reel_dir, "transcribe", "running")
+        transcript = transcribe.run(audio_path, reel_dir)
+        update_step(reel_dir, "transcribe", "skipped" if _was_done else "done")
+
+        # Step 3: scenes
+        _was_done = is_done(reel_dir, "scenes")
+        update_step(reel_dir, "scenes", "running")
+        scene_list = scenes.run(video_path, reel_dir)
+        update_step(reel_dir, "scenes", "skipped" if _was_done else "done")
+
+        # Step 4: keyframes
+        _was_done = is_done(reel_dir, "frames")
+        update_step(reel_dir, "frames", "running")
+        frame_pairs = frames.run(video_path, scene_list, reel_dir)
+        update_step(reel_dir, "frames", "skipped" if _was_done else "done")
+
+        # Step 5: OCR
+        _was_done = is_done(reel_dir, "ocr")
+        update_step(reel_dir, "ocr", "running")
+        ocr_dets = ocr.run(frame_pairs, reel_dir)
+        update_step(reel_dir, "ocr", "skipped" if _was_done else "done")
+
+        # Step 6: vision
+        _was_done = is_done(reel_dir, "vision")
+        update_step(reel_dir, "vision", "running")
+        visuals = vision.run(scene_list, frame_pairs, reel_dir)
+        update_step(reel_dir, "vision", "skipped" if _was_done else "done")
+
+        # Step 7: aggregate
+        _was_done = is_done(reel_dir, "aggregate")
+        update_step(reel_dir, "aggregate", "running")
+        hook, beats = aggregate.run(
+            transcript, scene_list, ocr_dets, visuals, reel_dir, duration_s
+        )
+        update_step(reel_dir, "aggregate", "skipped" if _was_done else "done")
+
+        # Step 8: classify
+        _was_done = is_done(reel_dir, "classify")
+        update_step(reel_dir, "classify", "running")
+        decoded = classify.run(reel_id, video_path, hook, beats, duration_s, reel_dir)
+        update_step(reel_dir, "classify", "skipped" if _was_done else "done")
+
+        # Step 9: write
+        update_step(reel_dir, "write", "running")
+        _row, appended = xlsx_writer.append_row(decoded, settings.swipe_library_path)
+        update_step(reel_dir, "write", "done" if appended else "skipped")
+
+    except Exception as exc:
+        # Mark the currently-running step (or preflight) as failed
+        failed_manifest = load_manifest(reel_dir)
+        if failed_manifest is not None:
+            found_running = False
+            for s in failed_manifest.steps:
+                if s.status == "running":
+                    error = PipelineError(
+                        code="unknown",
+                        message=str(exc),
+                        step=s.name,
+                    )
+                    update_step(reel_dir, s.name, "failed", error=error)
+                    found_running = True
+                    break
+            if not found_running:
+                # Preflight failure — no step was running yet
+                failed_manifest.errors.append(
+                    PipelineError(
+                        code="preflight",
+                        message=str(exc),
+                        step="preflight",
+                    )
+                )
+            failed_manifest = load_manifest(reel_dir) if found_running else failed_manifest
+            failed_manifest.finished_at = datetime.now(UTC)
+            save_manifest(reel_dir, failed_manifest)
+        raise
+
+    # Finalize manifest
+    manifest = load_manifest(reel_dir)
+    if manifest is not None:
+        manifest.finished_at = datetime.now(UTC)
+        save_manifest(reel_dir, manifest)
 
     console.rule(f"[bold green]done: {reel_id}[/bold green]")
     return decoded

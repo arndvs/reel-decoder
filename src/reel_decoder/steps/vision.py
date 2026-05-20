@@ -15,18 +15,11 @@ import ollama
 from rich.console import Console
 
 from reel_decoder.config import settings
-from reel_decoder.schema import FrameDescription, Scene
+from reel_decoder.prompt_loader import load_prompt
+from reel_decoder.schema import FrameDescription, PipelineError, Scene
 from reel_decoder.steps import is_done, mark_done
 
 console = Console()
-
-
-PROMPT = (
-    "Describe what's in this frame in one sentence. Focus on: subject, action, "
-    "setting, lighting, and any product or object that appears prominent. "
-    "Do not describe text overlays — those are handled separately. "
-    "Keep it under 30 words."
-)
 
 
 def _find_closest_frame(scene: Scene, frame_pairs: list[tuple[float, Path]]) -> Path | None:
@@ -65,7 +58,7 @@ def run(
                 messages=[
                     {
                         "role": "user",
-                        "content": PROMPT,
+                        "content": load_prompt("vision"),
                         "images": [image_b64],
                     }
                 ],
@@ -73,7 +66,14 @@ def run(
             )
             desc = resp.message.content.strip()
         except Exception as e:  # noqa: BLE001
-            console.log(f"[yellow]vision: failed scene {scene.index}: {e}[/yellow]")
+            error = PipelineError(
+                code="vision_failure",
+                message=f"Failed scene {scene.index}: {e}",
+                step="vision",
+                details=str(frame),
+                retryable=True,
+            )
+            console.log(f"[yellow]vision: {error.message}[/yellow]")
             desc = ""
 
         descriptions.append(
