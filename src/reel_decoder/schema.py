@@ -6,7 +6,7 @@ validates against these models. The shape mirrors the Swipe Library columns.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -223,3 +223,24 @@ class PipelineError(BaseModel):
     step: str
     details: str = ""
     retryable: bool = True
+
+
+class StepStatus(BaseModel):
+    """Status of a single pipeline step within a run."""
+
+    name: str
+    status: Literal["pending", "running", "done", "failed", "skipped"] = "pending"
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    error: PipelineError | None = None
+
+
+class RunManifest(BaseModel):
+    """Per-reel run manifest — tracks pipeline execution state."""
+
+    reel_id: str
+    source_path: str
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    finished_at: datetime | None = None
+    steps: list[StepStatus] = Field(default_factory=list)
+    errors: list[PipelineError] = Field(default_factory=list)
