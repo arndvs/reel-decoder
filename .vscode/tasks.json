@@ -20,26 +20,26 @@
     {
       "label": "Doctor",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m reel_decoder doctor",
+      "command": "\"${command:python.interpreterPath}\" -m reel_decoder doctor",
       "problemMatcher": []
     },
     {
       "label": "Decode all reels",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m reel_decoder decode-all",
+      "command": "\"${command:python.interpreterPath}\" -m reel_decoder decode-all",
       "problemMatcher": []
     },
     {
       "label": "Tests",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m pytest -v",
+      "command": "\"${command:python.interpreterPath}\" -m pytest -v",
       "group": { "kind": "test", "isDefault": true },
       "problemMatcher": []
     },
     {
       "label": "Lint (ruff)",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m ruff check src tests",
+      "command": "\"${command:python.interpreterPath}\" -m ruff check src tests",
       "problemMatcher": []
     }
   ]
