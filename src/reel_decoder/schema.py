@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -81,6 +82,7 @@ class DecodedReel(BaseModel):
     """A fully-decoded reel — one row in the Swipe Library."""
 
     reel_id: str
+    schema_version: Literal[1] = 1
     source_path: str
     date_decoded: date = Field(default_factory=date.today)
     creator: str = ""

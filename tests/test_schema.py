@@ -152,3 +152,28 @@ def test_too_many_beats_rejected():
             beats=extra_beats,
             length_s=10.0,
         )
+
+
+def test_schema_version_default():
+    decoded = make_minimal_decoded()
+    assert decoded.schema_version == 1
+
+
+def test_schema_version_wrong_rejected():
+    with pytest.raises(ValidationError):
+        DecodedReel(
+            reel_id="x",
+            schema_version=2,
+            source_path="y",
+            hook=Hook(pattern=HookPattern.rarity, text="t", end_s=1.0),
+            beats=[Beat(index=1, type=BeatType.benefit, primary_text="x", visual="x", start_s=0, end_s=1)],
+            length_s=2.0,
+        )
+
+
+def test_schema_version_excluded_from_xlsx_row():
+    decoded = make_minimal_decoded()
+    row = decoded.to_xlsx_row()
+    assert len(row) == 35
+    # schema_version should not appear in the row values
+    assert 1 not in row[1:]  # skip first element (row number placeholder)
