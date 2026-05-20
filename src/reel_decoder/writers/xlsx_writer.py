@@ -147,9 +147,10 @@ def append_row(decoded: DecodedReel, xlsx_path: Path) -> tuple[int, bool]:
         existing_row: int | None = None
         filled_count = 0
         for row in ws.iter_rows(min_row=2, min_col=3, max_col=3, max_row=ws.max_row):
-            if row[0].value is not None:
+            val = row[0].value
+            if isinstance(val, str) and val.strip() or not isinstance(val, str) and val is not None:
                 filled_count += 1
-                if row[0].value == decoded.source_path:
+                if val == decoded.source_path:
                     existing_row = row[0].row
 
         if existing_row is not None:
