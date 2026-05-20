@@ -66,6 +66,9 @@ def load_manifest(reel_dir: Path) -> RunManifest | None:
     except (ValidationError, ValueError):
         console.log(f"[yellow]manifest: corrupt file at {path} — ignoring[/yellow]")
         return None
+    except OSError:
+        console.log(f"[yellow]manifest: unreadable file at {path} — ignoring[/yellow]")
+        return None
 
 
 def save_manifest(reel_dir: Path, manifest: RunManifest) -> None:
